@@ -25,8 +25,7 @@ public class ReplaceWarehouseUseCase implements ReplaceWarehouseOperation {
   private final WarehouseStore warehouseStore;
   private final LocationResolver locationResolver;
 
-  public ReplaceWarehouseUseCase(
-      WarehouseStore warehouseStore, LocationResolver locationResolver) {
+  public ReplaceWarehouseUseCase(WarehouseStore warehouseStore, LocationResolver locationResolver) {
     this.warehouseStore = warehouseStore;
     this.locationResolver = locationResolver;
   }
@@ -46,8 +45,7 @@ public class ReplaceWarehouseUseCase implements ReplaceWarehouseOperation {
 
     Location location = locationResolver.resolveByIdentifier(newWarehouse.location);
     if (location == null) {
-      throw new InvalidLocationException(
-          "Location " + newWarehouse.location + " does not exist");
+      throw new InvalidLocationException("Location " + newWarehouse.location + " does not exist");
     }
 
     long activeWarehousesAtLocationExcludingCurrent =

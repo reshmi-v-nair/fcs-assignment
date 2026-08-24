@@ -39,7 +39,8 @@ public class FulfillmentAssignmentService {
   }
 
   @Transactional
-  public FulfillmentAssignment assign(Long storeId, Long productId, String warehouseBusinessUnitCode) {
+  public FulfillmentAssignment assign(
+      Long storeId, Long productId, String warehouseBusinessUnitCode) {
     Store store = Store.findById(storeId);
     if (store == null) {
       throw new WebApplicationException("Store with id of " + storeId + " does not exist.", 404);
@@ -60,9 +61,7 @@ public class FulfillmentAssignmentService {
       LOGGER.infof(
           "Fulfillment assignment already exists for store=%d, product=%d, warehouse=%s; no-op",
           storeId, productId, warehouseBusinessUnitCode);
-      return fulfillmentAssignmentRepository
-          .listByStoreAndProduct(store, product)
-          .stream()
+      return fulfillmentAssignmentRepository.listByStoreAndProduct(store, product).stream()
           .filter(a -> a.warehouseBusinessUnitCode.equals(warehouseBusinessUnitCode))
           .findFirst()
           .orElseThrow();

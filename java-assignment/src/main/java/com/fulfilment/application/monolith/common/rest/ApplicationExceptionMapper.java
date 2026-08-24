@@ -9,15 +9,14 @@ import jakarta.ws.rs.ext.Provider;
 import org.jboss.logging.Logger;
 
 /**
- * Single mapper for the whole {@link ApplicationException} hierarchy (warehouse validation
- * errors, fulfillment constraint violations, etc.), so each new business-rule exception only
- * needs to declare its {@link Response.Status} rather than wiring up its own mapper.
+ * Single mapper for the whole {@link ApplicationException} hierarchy (warehouse validation errors,
+ * fulfillment constraint violations, etc.), so each new business-rule exception only needs to
+ * declare its {@link Response.Status} rather than wiring up its own mapper.
  */
 @Provider
 public class ApplicationExceptionMapper implements ExceptionMapper<ApplicationException> {
 
-  private static final Logger LOGGER =
-      Logger.getLogger(ApplicationExceptionMapper.class.getName());
+  private static final Logger LOGGER = Logger.getLogger(ApplicationExceptionMapper.class.getName());
 
   @Inject ObjectMapper objectMapper;
 

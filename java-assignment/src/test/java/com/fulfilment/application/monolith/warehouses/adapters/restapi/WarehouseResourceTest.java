@@ -9,9 +9,9 @@ import io.restassured.http.ContentType;
 import org.junit.jupiter.api.Test;
 
 /**
- * REST-level tests for the Warehouse endpoints. Unlike {@link WarehouseEndpointIT} (which only
- * runs under the native profile via failsafe), this uses {@code @QuarkusTest} so it runs under
- * plain {@code mvn test}. Requires a Postgres instance reachable via Quarkus Dev Services.
+ * REST-level tests for the Warehouse endpoints. Unlike {@link WarehouseEndpointIT} (which only runs
+ * under the native profile via failsafe), this uses {@code @QuarkusTest} so it runs under plain
+ * {@code mvn test}. Requires a Postgres instance reachable via Quarkus Dev Services.
  */
 @QuarkusTest
 public class WarehouseResourceTest {
@@ -115,7 +115,10 @@ public class WarehouseResourceTest {
             .toString();
 
     given().when().delete(PATH + "/" + id).then().statusCode(204);
-    given().when().delete(PATH + "/" + id).then().statusCode(404);
+    // Archiving an already-archived warehouse is a conflict with its current state, not a
+    // not-found - WarehouseAlreadyArchivedException maps to 409, consistently with the other
+    // warehouse domain exceptions (see ApplicationExceptionMapper).
+    given().when().delete(PATH + "/" + id).then().statusCode(409);
   }
 
   @Test
@@ -124,8 +127,7 @@ public class WarehouseResourceTest {
         "{\"businessUnitCode\":\"MWH.920\",\"location\":\"EINDHOVEN-001\",\"capacity\":50,\"stock\":15}";
     given().contentType(ContentType.JSON).body(createBody).when().post(PATH).then().statusCode(200);
 
-    String replaceBody =
-        "{\"location\":\"EINDHOVEN-001\",\"capacity\":60,\"stock\":15}";
+    String replaceBody = "{\"location\":\"EINDHOVEN-001\",\"capacity\":60,\"stock\":15}";
     given()
         .contentType(ContentType.JSON)
         .body(replaceBody)

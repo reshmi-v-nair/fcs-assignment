@@ -32,9 +32,7 @@ public class CreateWarehouseUseCase implements CreateWarehouseOperation {
   public void create(Warehouse warehouse) {
     if (warehouseStore.findByBusinessUnitCode(warehouse.businessUnitCode) != null) {
       throw new BusinessUnitCodeAlreadyExistsException(
-          "A warehouse with business unit code "
-              + warehouse.businessUnitCode
-              + " already exists");
+          "A warehouse with business unit code " + warehouse.businessUnitCode + " already exists");
     }
 
     Location location = locationResolver.resolveByIdentifier(warehouse.location);
@@ -67,13 +65,16 @@ public class CreateWarehouseUseCase implements CreateWarehouseOperation {
 
     if (warehouse.stock > warehouse.capacity) {
       throw new WarehouseCapacityExceededException(
-          "Warehouse capacity " + warehouse.capacity + " cannot handle the informed stock ("
+          "Warehouse capacity "
+              + warehouse.capacity
+              + " cannot handle the informed stock ("
               + warehouse.stock
               + ")");
     }
 
     warehouse.createdAt = LocalDateTime.now();
     warehouseStore.create(warehouse);
-    LOGGER.infof("Created warehouse %s at location %s", warehouse.businessUnitCode, warehouse.location);
+    LOGGER.infof(
+        "Created warehouse %s at location %s", warehouse.businessUnitCode, warehouse.location);
   }
 }

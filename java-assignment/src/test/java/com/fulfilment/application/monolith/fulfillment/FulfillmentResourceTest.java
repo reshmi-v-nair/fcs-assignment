@@ -1,15 +1,16 @@
 package com.fulfilment.application.monolith.fulfillment;
 
 import static io.restassured.RestAssured.given;
+import static org.hamcrest.CoreMatchers.containsString;
 
 import io.quarkus.test.junit.QuarkusTest;
 import io.restassured.http.ContentType;
 import org.junit.jupiter.api.Test;
 
 /**
- * REST-level tests for the bonus Warehouse-Store-Product fulfillment association feature. Seed
- * data (import.sql): store 1 (TONSTAD) is fulfilled for product 1 by warehouses MWH.001 and
- * MWH.012, and for product 2 by MWH.012; store 2 (KALLAX) is fulfilled for product 3 by MWH.023.
+ * REST-level tests for the bonus Warehouse-Store-Product fulfillment association feature. Seed data
+ * (import.sql): store 1 (TONSTAD) is fulfilled for product 1 by warehouses MWH.001 and MWH.012, and
+ * for product 2 by MWH.012; store 2 (KALLAX) is fulfilled for product 3 by MWH.023.
  */
 @QuarkusTest
 public class FulfillmentResourceTest {
@@ -35,7 +36,13 @@ public class FulfillmentResourceTest {
         String.format(
             "{\"businessUnitCode\":\"%s\",\"location\":\"%s\",\"capacity\":%d,\"stock\":%d}",
             buCode, location, capacity, stock);
-    given().contentType(ContentType.JSON).body(body).when().post("warehouse").then().statusCode(200);
+    given()
+        .contentType(ContentType.JSON)
+        .body(body)
+        .when()
+        .post("warehouse")
+        .then()
+        .statusCode(200);
   }
 
   private void assign(long storeId, long productId, String buCode, int expectedStatus) {
@@ -112,5 +119,53 @@ public class FulfillmentResourceTest {
   @Test
   void rejectsUnknownWarehouse() {
     assign(2, 1, "MWH.999999", 404);
+  }
+
+  @Test
+  void listsAllWhenNoFilterProvided() {
+    given().when().get(PATH).then().statusCode(200).body(containsString("MWH.001"));
+  }
+
+  @Test
+  void listsByWarehouseBusinessUnitCode() {
+    given()
+        .when()
+        .get(PATH + "?warehouseBusinessUnitCode=MWH.023")
+        .then()
+        .statusCode(200)
+        .body(containsString("MWH.023"));
+  }
+
+  @Test
+  void listsByStoreId() {
+    given().when().get(PATH + "?storeId=1").then().statusCode(200).body(containsString("MWH.001"));
+  }
+
+  @Test
+  void rejectsListByUnknownStoreId() {
+    given().when().get(PATH + "?storeId=999999").then().statusCode(404);
+  }
+
+  @Test
+  void deletesFulfillmentAssignment() {
+    String body = "{\"storeId\":2,\"productId\":2,\"warehouseBusinessUnitCode\":\"MWH.023\"}";
+    String id =
+        given()
+            .contentType(ContentType.JSON)
+            .body(body)
+            .when()
+            .post(PATH)
+            .then()
+            .statusCode(201)
+            .extract()
+            .path("id")
+            .toString();
+
+    given().when().delete(PATH + "/" + id).then().statusCode(204);
+  }
+
+  @Test
+  void rejectsDeleteOfUnknownFulfillmentAssignment() {
+    given().when().delete(PATH + "/999999").then().statusCode(404);
   }
 }

@@ -14,12 +14,17 @@ import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.WebApplicationException;
 import jakarta.ws.rs.core.Response;
 import java.util.List;
+import org.jboss.logging.Logger;
 
 @Path("product")
 @ApplicationScoped
 @Produces("application/json")
 @Consumes("application/json")
 public class ProductResource {
+
+  private static final int UNPROCESSABLE_ENTITY = 422;
+
+  private static final Logger LOGGER = Logger.getLogger(ProductResource.class.getName());
 
   @Inject ProductRepository productRepository;
 
@@ -33,7 +38,10 @@ public class ProductResource {
   public Product getSingle(Long id) {
     Product entity = productRepository.findById(id);
     if (entity == null) {
-      throw new WebApplicationException("Product with id of " + id + " does not exist.", 404);
+      LOGGER.warnf("Product with id of %d does not exist.", id);
+      throw new WebApplicationException(
+          "Product with id of " + id + " does not exist.",
+          Response.Status.NOT_FOUND.getStatusCode());
     }
     return entity;
   }
@@ -42,10 +50,12 @@ public class ProductResource {
   @Transactional
   public Response create(Product product) {
     if (product.id != null) {
-      throw new WebApplicationException("Id was invalidly set on request.", 422);
+      LOGGER.warn("Rejecting product creation: id was invalidly set on request.");
+      throw new WebApplicationException("Id was invalidly set on request.", UNPROCESSABLE_ENTITY);
     }
 
     productRepository.persist(product);
+    LOGGER.infof("Created product %d (%s)", product.id, product.name);
     return Response.ok(product).status(201).build();
   }
 
@@ -54,13 +64,18 @@ public class ProductResource {
   @Transactional
   public Product update(Long id, Product product) {
     if (product.name == null) {
-      throw new WebApplicationException("Product Name was not set on request.", 422);
+      LOGGER.warnf("Rejecting update of product %d: name was not set on request.", id);
+      throw new WebApplicationException(
+          "Product Name was not set on request.", UNPROCESSABLE_ENTITY);
     }
 
     Product entity = productRepository.findById(id);
 
     if (entity == null) {
-      throw new WebApplicationException("Product with id of " + id + " does not exist.", 404);
+      LOGGER.warnf("Product with id of %d does not exist.", id);
+      throw new WebApplicationException(
+          "Product with id of " + id + " does not exist.",
+          Response.Status.NOT_FOUND.getStatusCode());
     }
 
     entity.name = product.name;
@@ -70,6 +85,7 @@ public class ProductResource {
 
     productRepository.persist(entity);
 
+    LOGGER.infof("Updated product %d (%s)", id, entity.name);
     return entity;
   }
 
@@ -79,9 +95,13 @@ public class ProductResource {
   public Response delete(Long id) {
     Product entity = productRepository.findById(id);
     if (entity == null) {
-      throw new WebApplicationException("Product with id of " + id + " does not exist.", 404);
+      LOGGER.warnf("Product with id of %d does not exist.", id);
+      throw new WebApplicationException(
+          "Product with id of " + id + " does not exist.",
+          Response.Status.NOT_FOUND.getStatusCode());
     }
     productRepository.delete(entity);
+    LOGGER.infof("Deleted product %d", id);
     return Response.status(204).build();
   }
 }

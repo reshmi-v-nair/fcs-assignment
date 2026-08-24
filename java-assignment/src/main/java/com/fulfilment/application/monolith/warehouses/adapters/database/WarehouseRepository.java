@@ -5,9 +5,12 @@ import com.fulfilment.application.monolith.warehouses.domain.ports.WarehouseStor
 import io.quarkus.hibernate.orm.panache.PanacheRepository;
 import jakarta.enterprise.context.ApplicationScoped;
 import java.util.List;
+import org.jboss.logging.Logger;
 
 @ApplicationScoped
 public class WarehouseRepository implements WarehouseStore, PanacheRepository<DbWarehouse> {
+
+  private static final Logger LOGGER = Logger.getLogger(WarehouseRepository.class.getName());
 
   @Override
   public List<Warehouse> getAll() {
@@ -28,6 +31,10 @@ public class WarehouseRepository implements WarehouseStore, PanacheRepository<Db
     // (archivedAt is null) to avoid ambiguously matching a past archived record instead.
     DbWarehouse dbWarehouse = findActiveByBusinessUnitCode(warehouse.businessUnitCode);
     if (dbWarehouse == null) {
+      LOGGER.errorf(
+          "No active warehouse found with businessUnitCode %s during update; this should have"
+              + " been caught by the calling use case's existence check.",
+          warehouse.businessUnitCode);
       throw new IllegalStateException(
           "No active warehouse found with businessUnitCode " + warehouse.businessUnitCode);
     }

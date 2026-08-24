@@ -71,7 +71,8 @@ public class WarehouseResourceImpl implements WarehouseResource {
   public Warehouse replaceTheCurrentActiveWarehouse(
       String businessUnitCode, @NotNull Warehouse data) {
     var warehouse = toWarehouseModel(data);
-    if (data.getBusinessUnitCode() != null && !businessUnitCode.equals(data.getBusinessUnitCode())) {
+    if (data.getBusinessUnitCode() != null
+        && !businessUnitCode.equals(data.getBusinessUnitCode())) {
       LOGGER.warnf(
           "Business unit code in request body (%s) differs from path (%s); path value wins",
           data.getBusinessUnitCode(), businessUnitCode);

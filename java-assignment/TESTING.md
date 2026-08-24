@@ -54,6 +54,33 @@ or Postgres at all and will run in any environment.
   classes, which are outside the assignment's control).
 - If the gate fails, open the HTML report to see exactly which classes/branches are uncovered.
 
+## Recent additions (hardening pass)
+
+- **Negative/error-path coverage filled in**: `ProductEndpointTest` previously only covered the
+  happy-path CRUD flow; it now also covers create-with-preset-id (422), get/update/delete of an
+  unknown id (404), update-with-missing-name (422), and a positive field-update assertion.
+  `StoreResourceTest` had no coverage at all for the `PATCH` endpoint; it now covers a positive
+  partial update and the missing-name (422) rejection. `FulfillmentAssignmentServiceTest`
+  previously only exercised the max-2-warehouses-per-product-per-store rule at the service level
+  (the other two cardinality rules were only checked via `FulfillmentResourceTest` at the REST
+  layer); it now also exercises max-3-warehouses-per-store and max-5-products-per-warehouse
+  directly against the service, using freshly created stores/products/warehouses so it doesn't
+  depend on seed data or another test's side effects.
+- **Logging**: `ProductResource` and `FulfillmentResource` had no logging at all; `StoreResource`
+  logged transaction-sync outcomes but not its own rejections. All three now log at `info` on
+  successful mutations and `warn` immediately before each rejection (`WebApplicationException`),
+  using the same JBoss Logging convention already established in the Warehouse use cases.
+  `WarehouseRepository.update()` now logs at `error` before its defensive `IllegalStateException`
+  (an invariant that should be unreachable given upstream use-case checks, but shouldn't fail
+  silently if it ever is).
+- **Coding standards**: added `spotless-maven-plugin` (Google Java Format) bound to the `validate`
+  phase, so `mvn compile`/`mvn verify` now fail the build on inconsistent formatting. Run
+  `./mvnw spotless:apply` to auto-format.
+- **Health checks**: `quarkus-smallrye-health` was already a declared dependency; it exposes
+  `/q/health/live` and `/q/health/ready` with zero additional code.
+- **CI**: `.github/workflows/ci.yml` runs `./mvnw verify` (build + full test suite + the JaCoCo
+  80% gate) on every push/PR to `main`.
+
 ## Known limitations / non-goals
 
 - `import.sql`'s seeded `MWH.001 @ ZWOLLE-001` has `capacity=100`, which exceeds `ZWOLLE-001`'s
