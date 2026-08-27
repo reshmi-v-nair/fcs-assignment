@@ -1,11 +1,11 @@
 package com.fulfilment.application.monolith.stores;
 
+import com.fulfilment.application.monolith.stores.events.StoreCreatedEvent;
+import com.fulfilment.application.monolith.stores.events.StoreUpdatedEvent;
 import io.quarkus.panache.common.Sort;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.event.Event;
 import jakarta.inject.Inject;
-import jakarta.transaction.Status;
-import jakarta.transaction.Synchronization;
-import jakarta.transaction.TransactionSynchronizationRegistry;
 import jakarta.transaction.Transactional;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.DELETE;
@@ -20,6 +20,13 @@ import jakarta.ws.rs.core.Response;
 import java.util.List;
 import org.jboss.logging.Logger;
 
+/**
+ * Legacy-system sync ({@code LegacyStoreManagerGateway}) is triggered indirectly, by firing {@link
+ * StoreCreatedEvent}/{@link StoreUpdatedEvent} CDI events that {@code LegacyStoreSyncObserver}
+ * observes with {@code @Observes(during = TransactionPhase.AFTER_SUCCESS)} - the container defers
+ * actually invoking the gateway until this method's transaction commits, so a rolled-back change is
+ * never propagated downstream.
+ */
 @Path("store")
 @ApplicationScoped
 @Produces("application/json")
@@ -28,33 +35,11 @@ public class StoreResource {
 
   private static final int UNPROCESSABLE_ENTITY = 422;
 
-  @Inject LegacyStoreManagerGateway legacyStoreManagerGateway;
+  @Inject Event<StoreCreatedEvent> storeCreatedEvent;
 
-  @Inject TransactionSynchronizationRegistry transactionSynchronizationRegistry;
+  @Inject Event<StoreUpdatedEvent> storeUpdatedEvent;
 
   private static final Logger LOGGER = Logger.getLogger(StoreResource.class.getName());
-
-  /**
-   * Registers the given action to run only once the current JTA transaction has actually committed,
-   * so the legacy system never observes a Store change that was rolled back.
-   */
-  private void runAfterCommit(Runnable action) {
-    transactionSynchronizationRegistry.registerInterposedSynchronization(
-        new Synchronization() {
-          @Override
-          public void beforeCompletion() {}
-
-          @Override
-          public void afterCompletion(int status) {
-            if (status == Status.STATUS_COMMITTED) {
-              action.run();
-            } else {
-              LOGGER.warnf(
-                  "Transaction did not commit (status=%d); skipping legacy system sync", status);
-            }
-          }
-        });
-  }
 
   @GET
   public List<Store> get() {
@@ -84,7 +69,7 @@ public class StoreResource {
     store.persist();
 
     LOGGER.infof("Created store %d (%s)", store.id, store.name);
-    runAfterCommit(() -> legacyStoreManagerGateway.createStoreOnLegacySystem(store));
+    storeCreatedEvent.fire(new StoreCreatedEvent(store));
 
     return Response.ok(store).status(201).build();
   }
@@ -110,7 +95,7 @@ public class StoreResource {
     entity.quantityProductsInStock = updatedStore.quantityProductsInStock;
 
     LOGGER.infof("Updated store %d (%s)", id, entity.name);
-    runAfterCommit(() -> legacyStoreManagerGateway.updateStoreOnLegacySystem(updatedStore));
+    storeUpdatedEvent.fire(new StoreUpdatedEvent(updatedStore));
 
     return entity;
   }
@@ -141,7 +126,7 @@ public class StoreResource {
     }
 
     LOGGER.infof("Patched store %d (%s)", id, entity.name);
-    runAfterCommit(() -> legacyStoreManagerGateway.updateStoreOnLegacySystem(updatedStore));
+    storeUpdatedEvent.fire(new StoreUpdatedEvent(updatedStore));
 
     return entity;
   }
