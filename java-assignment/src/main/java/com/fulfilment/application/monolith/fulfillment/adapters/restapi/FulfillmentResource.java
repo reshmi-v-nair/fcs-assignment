@@ -1,5 +1,8 @@
-package com.fulfilment.application.monolith.fulfillment;
+package com.fulfilment.application.monolith.fulfillment.adapters.restapi;
 
+import com.fulfilment.application.monolith.fulfillment.FulfillmentAssignment;
+import com.fulfilment.application.monolith.fulfillment.FulfillmentAssignmentService;
+import com.fulfilment.application.monolith.fulfillment.adapters.database.FulfillmentAssignmentRepository;
 import com.fulfilment.application.monolith.stores.Store;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.transaction.Transactional;

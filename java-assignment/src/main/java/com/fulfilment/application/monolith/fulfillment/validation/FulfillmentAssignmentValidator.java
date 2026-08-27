@@ -1,5 +1,6 @@
-package com.fulfilment.application.monolith.fulfillment;
+package com.fulfilment.application.monolith.fulfillment.validation;
 
+import com.fulfilment.application.monolith.fulfillment.adapters.database.FulfillmentAssignmentRepository;
 import com.fulfilment.application.monolith.fulfillment.exceptions.MaxProductsPerWarehouseExceededException;
 import com.fulfilment.application.monolith.fulfillment.exceptions.MaxWarehousesPerProductPerStoreExceededException;
 import com.fulfilment.application.monolith.fulfillment.exceptions.MaxWarehousesPerStoreExceededException;
@@ -11,8 +12,9 @@ import java.util.stream.Collectors;
 
 /**
  * Cardinality rules for the bonus Warehouse-Store-Product fulfillment feature, kept separate from
- * {@link FulfillmentAssignmentService}'s orchestration (existence lookups, idempotency check,
- * persisting) so each rule is independently testable.
+ * {@link com.fulfilment.application.monolith.fulfillment.FulfillmentAssignmentService}'s
+ * orchestration (existence lookups, idempotency check, persisting) so each rule is independently
+ * testable.
  */
 @ApplicationScoped
 public class FulfillmentAssignmentValidator {
