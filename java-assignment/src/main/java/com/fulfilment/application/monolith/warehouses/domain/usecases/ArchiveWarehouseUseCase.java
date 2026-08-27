@@ -1,9 +1,9 @@
 package com.fulfilment.application.monolith.warehouses.domain.usecases;
 
-import com.fulfilment.application.monolith.warehouses.domain.exceptions.WarehouseAlreadyArchivedException;
 import com.fulfilment.application.monolith.warehouses.domain.models.Warehouse;
 import com.fulfilment.application.monolith.warehouses.domain.ports.ArchiveWarehouseOperation;
 import com.fulfilment.application.monolith.warehouses.domain.ports.WarehouseStore;
+import com.fulfilment.application.monolith.warehouses.domain.validation.WarehouseValidator;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.transaction.Transactional;
 import java.time.LocalDateTime;
@@ -15,18 +15,18 @@ public class ArchiveWarehouseUseCase implements ArchiveWarehouseOperation {
   private static final Logger LOGGER = Logger.getLogger(ArchiveWarehouseUseCase.class.getName());
 
   private final WarehouseStore warehouseStore;
+  private final WarehouseValidator warehouseValidator;
 
-  public ArchiveWarehouseUseCase(WarehouseStore warehouseStore) {
+  public ArchiveWarehouseUseCase(
+      WarehouseStore warehouseStore, WarehouseValidator warehouseValidator) {
     this.warehouseStore = warehouseStore;
+    this.warehouseValidator = warehouseValidator;
   }
 
   @Override
   @Transactional
   public void archive(Warehouse warehouse) {
-    if (warehouse.archivedAt != null) {
-      throw new WarehouseAlreadyArchivedException(
-          "Warehouse " + warehouse.businessUnitCode + " is already archived");
-    }
+    warehouseValidator.validateNotAlreadyArchived(warehouse);
 
     warehouse.archivedAt = LocalDateTime.now();
     warehouseStore.update(warehouse);

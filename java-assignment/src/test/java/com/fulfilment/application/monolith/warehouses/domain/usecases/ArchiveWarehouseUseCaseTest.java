@@ -6,7 +6,9 @@ import static org.mockito.Mockito.verify;
 
 import com.fulfilment.application.monolith.warehouses.domain.exceptions.WarehouseAlreadyArchivedException;
 import com.fulfilment.application.monolith.warehouses.domain.models.Warehouse;
+import com.fulfilment.application.monolith.warehouses.domain.ports.LocationResolver;
 import com.fulfilment.application.monolith.warehouses.domain.ports.WarehouseStore;
+import com.fulfilment.application.monolith.warehouses.domain.validation.WarehouseValidator;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -17,12 +19,15 @@ import org.mockito.junit.jupiter.MockitoExtension;
 public class ArchiveWarehouseUseCaseTest {
 
   @Mock private WarehouseStore warehouseStore;
+  @Mock private LocationResolver locationResolver;
 
   private ArchiveWarehouseUseCase useCase;
 
   @BeforeEach
   void setUp() {
-    useCase = new ArchiveWarehouseUseCase(warehouseStore);
+    useCase =
+        new ArchiveWarehouseUseCase(
+            warehouseStore, new WarehouseValidator(warehouseStore, locationResolver));
   }
 
   @Test

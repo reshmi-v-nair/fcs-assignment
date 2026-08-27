@@ -1,14 +1,10 @@
 package com.fulfilment.application.monolith.warehouses.domain.usecases;
 
-import com.fulfilment.application.monolith.warehouses.domain.exceptions.BusinessUnitCodeAlreadyExistsException;
-import com.fulfilment.application.monolith.warehouses.domain.exceptions.InvalidLocationException;
-import com.fulfilment.application.monolith.warehouses.domain.exceptions.MaxWarehousesExceededException;
-import com.fulfilment.application.monolith.warehouses.domain.exceptions.WarehouseCapacityExceededException;
 import com.fulfilment.application.monolith.warehouses.domain.models.Location;
 import com.fulfilment.application.monolith.warehouses.domain.models.Warehouse;
 import com.fulfilment.application.monolith.warehouses.domain.ports.CreateWarehouseOperation;
-import com.fulfilment.application.monolith.warehouses.domain.ports.LocationResolver;
 import com.fulfilment.application.monolith.warehouses.domain.ports.WarehouseStore;
+import com.fulfilment.application.monolith.warehouses.domain.validation.WarehouseValidator;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.transaction.Transactional;
 import java.time.LocalDateTime;
@@ -20,57 +16,23 @@ public class CreateWarehouseUseCase implements CreateWarehouseOperation {
   private static final Logger LOGGER = Logger.getLogger(CreateWarehouseUseCase.class.getName());
 
   private final WarehouseStore warehouseStore;
-  private final LocationResolver locationResolver;
+  private final WarehouseValidator warehouseValidator;
 
-  public CreateWarehouseUseCase(WarehouseStore warehouseStore, LocationResolver locationResolver) {
+  public CreateWarehouseUseCase(
+      WarehouseStore warehouseStore, WarehouseValidator warehouseValidator) {
     this.warehouseStore = warehouseStore;
-    this.locationResolver = locationResolver;
+    this.warehouseValidator = warehouseValidator;
   }
 
   @Override
   @Transactional
   public void create(Warehouse warehouse) {
-    if (warehouseStore.findByBusinessUnitCode(warehouse.businessUnitCode) != null) {
-      throw new BusinessUnitCodeAlreadyExistsException(
-          "A warehouse with business unit code " + warehouse.businessUnitCode + " already exists");
-    }
+    warehouseValidator.validateBusinessUnitCodeIsAvailable(warehouse.businessUnitCode);
 
-    Location location = locationResolver.resolveByIdentifier(warehouse.location);
-    if (location == null) {
-      throw new InvalidLocationException("Location " + warehouse.location + " does not exist");
-    }
-
-    long activeWarehousesAtLocation =
-        warehouseStore.getAll().stream()
-            .filter(w -> w.location.equals(location.identification) && w.archivedAt == null)
-            .count();
-    if (activeWarehousesAtLocation >= location.maxNumberOfWarehouses) {
-      throw new MaxWarehousesExceededException(
-          "Location "
-              + location.identification
-              + " has already reached its maximum number of warehouses ("
-              + location.maxNumberOfWarehouses
-              + ")");
-    }
-
-    if (warehouse.capacity > location.maxCapacity) {
-      throw new WarehouseCapacityExceededException(
-          "Warehouse capacity "
-              + warehouse.capacity
-              + " exceeds the maximum capacity ("
-              + location.maxCapacity
-              + ") allowed at location "
-              + location.identification);
-    }
-
-    if (warehouse.stock > warehouse.capacity) {
-      throw new WarehouseCapacityExceededException(
-          "Warehouse capacity "
-              + warehouse.capacity
-              + " cannot handle the informed stock ("
-              + warehouse.stock
-              + ")");
-    }
+    Location location = warehouseValidator.resolveLocationOrThrow(warehouse.location);
+    warehouseValidator.validateWarehouseCountWithinLimit(location, null);
+    warehouseValidator.validateCapacityWithinLocationMax(warehouse.capacity, location);
+    warehouseValidator.validateStockWithinCapacity(warehouse.stock, warehouse.capacity);
 
     warehouse.createdAt = LocalDateTime.now();
     warehouseStore.create(warehouse);

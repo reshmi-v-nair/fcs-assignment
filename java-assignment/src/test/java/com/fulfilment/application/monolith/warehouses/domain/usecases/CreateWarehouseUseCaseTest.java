@@ -13,6 +13,7 @@ import com.fulfilment.application.monolith.warehouses.domain.models.Location;
 import com.fulfilment.application.monolith.warehouses.domain.models.Warehouse;
 import com.fulfilment.application.monolith.warehouses.domain.ports.LocationResolver;
 import com.fulfilment.application.monolith.warehouses.domain.ports.WarehouseStore;
+import com.fulfilment.application.monolith.warehouses.domain.validation.WarehouseValidator;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -32,7 +33,9 @@ public class CreateWarehouseUseCaseTest {
 
   @BeforeEach
   void setUp() {
-    useCase = new CreateWarehouseUseCase(warehouseStore, locationResolver);
+    useCase =
+        new CreateWarehouseUseCase(
+            warehouseStore, new WarehouseValidator(warehouseStore, locationResolver));
   }
 
   private Warehouse newWarehouse(String buCode, String location, int capacity, int stock) {

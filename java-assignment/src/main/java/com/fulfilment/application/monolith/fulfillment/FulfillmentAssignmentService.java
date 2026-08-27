@@ -1,8 +1,5 @@
 package com.fulfilment.application.monolith.fulfillment;
 
-import com.fulfilment.application.monolith.fulfillment.exceptions.MaxProductsPerWarehouseExceededException;
-import com.fulfilment.application.monolith.fulfillment.exceptions.MaxWarehousesPerProductPerStoreExceededException;
-import com.fulfilment.application.monolith.fulfillment.exceptions.MaxWarehousesPerStoreExceededException;
 import com.fulfilment.application.monolith.products.Product;
 import com.fulfilment.application.monolith.products.ProductRepository;
 import com.fulfilment.application.monolith.stores.Store;
@@ -11,16 +8,10 @@ import com.fulfilment.application.monolith.warehouses.domain.ports.WarehouseStor
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.transaction.Transactional;
 import jakarta.ws.rs.WebApplicationException;
-import java.util.Set;
-import java.util.stream.Collectors;
 import org.jboss.logging.Logger;
 
 @ApplicationScoped
 public class FulfillmentAssignmentService {
-
-  private static final int MAX_WAREHOUSES_PER_PRODUCT_PER_STORE = 2;
-  private static final int MAX_WAREHOUSES_PER_STORE = 3;
-  private static final int MAX_PRODUCTS_PER_WAREHOUSE = 5;
 
   private static final Logger LOGGER =
       Logger.getLogger(FulfillmentAssignmentService.class.getName());
@@ -28,14 +19,17 @@ public class FulfillmentAssignmentService {
   private final FulfillmentAssignmentRepository fulfillmentAssignmentRepository;
   private final ProductRepository productRepository;
   private final WarehouseStore warehouseStore;
+  private final FulfillmentAssignmentValidator fulfillmentAssignmentValidator;
 
   public FulfillmentAssignmentService(
       FulfillmentAssignmentRepository fulfillmentAssignmentRepository,
       ProductRepository productRepository,
-      WarehouseStore warehouseStore) {
+      WarehouseStore warehouseStore,
+      FulfillmentAssignmentValidator fulfillmentAssignmentValidator) {
     this.fulfillmentAssignmentRepository = fulfillmentAssignmentRepository;
     this.productRepository = productRepository;
     this.warehouseStore = warehouseStore;
+    this.fulfillmentAssignmentValidator = fulfillmentAssignmentValidator;
   }
 
   @Transactional
@@ -67,50 +61,7 @@ public class FulfillmentAssignmentService {
           .orElseThrow();
     }
 
-    Set<String> warehousesForProductAtStore =
-        fulfillmentAssignmentRepository.listByStoreAndProduct(store, product).stream()
-            .map(a -> a.warehouseBusinessUnitCode)
-            .collect(Collectors.toSet());
-    if (warehousesForProductAtStore.size() >= MAX_WAREHOUSES_PER_PRODUCT_PER_STORE) {
-      throw new MaxWarehousesPerProductPerStoreExceededException(
-          "Product "
-              + productId
-              + " at store "
-              + storeId
-              + " is already fulfilled by the maximum of "
-              + MAX_WAREHOUSES_PER_PRODUCT_PER_STORE
-              + " warehouses");
-    }
-
-    Set<String> warehousesForStore =
-        fulfillmentAssignmentRepository.listByStore(store).stream()
-            .map(a -> a.warehouseBusinessUnitCode)
-            .collect(Collectors.toSet());
-    if (!warehousesForStore.contains(warehouseBusinessUnitCode)
-        && warehousesForStore.size() >= MAX_WAREHOUSES_PER_STORE) {
-      throw new MaxWarehousesPerStoreExceededException(
-          "Store "
-              + storeId
-              + " is already fulfilled by the maximum of "
-              + MAX_WAREHOUSES_PER_STORE
-              + " warehouses");
-    }
-
-    Set<Long> productsForWarehouse =
-        fulfillmentAssignmentRepository
-            .listByWarehouseBusinessUnitCode(warehouseBusinessUnitCode)
-            .stream()
-            .map(a -> a.product.id)
-            .collect(Collectors.toSet());
-    if (!productsForWarehouse.contains(productId)
-        && productsForWarehouse.size() >= MAX_PRODUCTS_PER_WAREHOUSE) {
-      throw new MaxProductsPerWarehouseExceededException(
-          "Warehouse "
-              + warehouseBusinessUnitCode
-              + " already stocks the maximum of "
-              + MAX_PRODUCTS_PER_WAREHOUSE
-              + " distinct products");
-    }
+    fulfillmentAssignmentValidator.validate(store, product, warehouseBusinessUnitCode);
 
     var assignment = new FulfillmentAssignment(store, product, warehouseBusinessUnitCode);
     fulfillmentAssignmentRepository.persist(assignment);
